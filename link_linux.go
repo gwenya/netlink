@@ -1683,7 +1683,69 @@ func (h *Handle) linkModify(link Link, flags int) error {
 		native.PutUint16(b, uint16(link.VlanId))
 		data := linkInfo.AddRtAttr(nl.IFLA_INFO_DATA, nil)
 		data.AddRtAttr(nl.IFLA_VLAN_ID, b)
+		var flags uint32
+		var flagsMask uint32
+		if link.ReorderHdr != nil {
+			flagsMask |= nl.VLAN_FLAG_REORDER_HDR
+			if *link.ReorderHdr {
+				flags |= nl.VLAN_FLAG_REORDER_HDR
+			} else {
+				flags &= nl.VLAN_FLAG_REORDER_HDR
+			}
+		}
+		if link.Gvrp != nil {
+			flagsMask |= nl.VLAN_FLAG_GVRP
+			if *link.Gvrp {
+				flags |= nl.VLAN_FLAG_GVRP
+			} else {
+				flags &= nl.VLAN_FLAG_GVRP
+			}
+		}
+		if link.Mvrp != nil {
+			flagsMask |= nl.VLAN_FLAG_MVRP
+			if *link.Mvrp {
+				flags |= nl.VLAN_FLAG_MVRP
+			} else {
+				flags &= nl.VLAN_FLAG_MVRP
+			}
+		}
+		if link.LooseBinding != nil {
+			flagsMask |= nl.VLAN_FLAG_LOOSE_BINDING
+			if *link.LooseBinding {
+				flags |= nl.VLAN_FLAG_LOOSE_BINDING
+			} else {
+				flags &= nl.VLAN_FLAG_LOOSE_BINDING
+			}
+		}
+		if link.BridgeBinding != nil {
+			flagsMask |= nl.VLAN_FLAG_BRIDGE_BINDING
+			if *link.BridgeBinding {
+				flags |= nl.VLAN_FLAG_BRIDGE_BINDING
+			} else {
+				flags &= nl.VLAN_FLAG_BRIDGE_BINDING
+			}
+		}
 
+		bytes := make([]byte, 8)
+		native.PutUint32(bytes[:4], flags)
+		native.PutUint32(bytes[4:], flagsMask)
+		data.AddRtAttr(nl.IFLA_VLAN_FLAGS, bytes)
+		if link.IngressQosMap != nil {
+			ingressMap := data.AddRtAttr(nl.IFLA_VLAN_INGRESS_QOS, nil)
+			for from, to := range link.IngressQosMap {
+				native.PutUint32(bytes[:4], from)
+				native.PutUint32(bytes[4:], to)
+				ingressMap.AddRtAttr(nl.IFLA_VLAN_QOS_MAPPING, bytes)
+			}
+		}
+		if link.EgressQosMap != nil {
+			egressMap := data.AddRtAttr(nl.IFLA_VLAN_EGRESS_QOS, nil)
+			for from, to := range link.EgressQosMap {
+				native.PutUint32(bytes[:4], from)
+				native.PutUint32(bytes[4:], to)
+				egressMap.AddRtAttr(nl.IFLA_VLAN_QOS_MAPPING, bytes)
+			}
+		}
 		if link.VlanProtocol != VLAN_PROTOCOL_UNKNOWN {
 			data.AddRtAttr(nl.IFLA_VLAN_PROTOCOL, htons(uint16(link.VlanProtocol)))
 		}
